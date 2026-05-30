@@ -127,11 +127,13 @@ def extract_total(text: str) -> Optional[float]:
         return None
 
     labeled_patterns = [
-        r'(?:總計|總金額|合計|總數|Grand\s*Total|Amount\s*Due|Amount\s*Payable)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
-        r'(?:Total|TOTAL|Amount|AMOUNT)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
-        r'(?:Balance\s*Due|Amount\s*Due|Total\s*Due|Net\s*Amount|Payable)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
-        r'(?:Invoice\s*Total|Subtotal|小計)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?:Balance\s*Due|Amount\s*Due|Total\s*Due|Net\s*Amount|Payable|應付)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?:Grand\s*Total|總計|總金額|合計|總數)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?:Invoice\s*Total|Amount\s*Payable)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?<!Sub)(?<!sub)(?:Total|TOTAL)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?:Amount|AMOUNT)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
         r'(?:港幣)\s*([\d,]+\.?\d*)',
+        r'(?:Subtotal|Sub\s*Total|小計)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
     ]
 
     for pattern in labeled_patterns:
@@ -180,7 +182,8 @@ def extract_tax(text: str) -> Optional[float]:
         return None
 
     tax_patterns = [
-        r'(?:稅款|稅|Tax|TAX|GST)[:\s]*\$?\s*([\d,]+\.?\d*)',
+        r'(?:稅款|稅項|稅)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?:Tax|TAX|GST|VAT)\s*(?:\([^)]*\))?[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
     ]
 
     for pattern in tax_patterns:
