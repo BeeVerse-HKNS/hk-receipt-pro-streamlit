@@ -126,26 +126,41 @@ def extract_total(text: str) -> Optional[float]:
     if not text:
         return None
 
-    total_patterns = [
-        r'(?:總計|總金額|合計|總數|Total|TOTAL|Amount|AMOUNT|Grand\s*Total)[:\s]*\$?\s*([\d,]+\.?\d*)',
-        r'(?:HKD|H\.K\.D\.|hkd|HK\$)\s*([\d,]+\.?\d*)',
-        r'\$\s*([\d,]+\.?\d*)',
-        r'(?:合計|總計)\s*([\d,]+\.?\d*)',
+    labeled_patterns = [
+        r'(?:總計|總金額|合計|總數|Grand\s*Total|Amount\s*Due|Amount\s*Payable)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?:Total|TOTAL|Amount|AMOUNT)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
         r'(?:港幣)\s*([\d,]+\.?\d*)',
     ]
 
-    all_matches = []
-    for pattern in total_patterns:
+    for pattern in labeled_patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
-        for match in matches:
+        if matches:
+            for match in reversed(matches):
+                try:
+                    return float(match.replace(',', ''))
+                except ValueError:
+                    continue
+
+    currency_patterns = [
+        r'(?:HKD|H\.K\.D\.|hkd|HK\$)\s*([\d,]+\.?\d*)',
+    ]
+
+    for pattern in currency_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in reversed(matches):
+                try:
+                    return float(match.replace(',', ''))
+                except ValueError:
+                    continue
+
+    dollar_matches = re.findall(r'\$\s*([\d,]+\.?\d*)', text)
+    if dollar_matches:
+        for match in reversed(dollar_matches):
             try:
-                amount = float(match.replace(',', ''))
-                all_matches.append(amount)
+                return float(match.replace(',', ''))
             except ValueError:
                 continue
-
-    if all_matches:
-        return max(all_matches)
 
     return None
 
@@ -169,15 +184,51 @@ def extract_tax(text: str) -> Optional[float]:
     return None
 
 
+_MERCHANT_TYPE_MAP = {
+    "parknshop": "retail", "百佳": "retail",
+    "wellcome": "retail", "惠康": "retail",
+    "7-eleven": "retail", "7-11": "retail", "七十一": "retail",
+    "circle k": "retail", "ok便利店": "retail",
+    "watsons": "retail", "屈臣氏": "retail",
+    "mannings": "retail", "萬寧": "retail",
+    "ikea": "retail", "宜家": "retail",
+    "uniqlo": "retail",
+    "h&m": "retail",
+    "mcdonald": "restaurant", "麥當勞": "restaurant",
+    "kfc": "restaurant", "肯德基": "restaurant",
+    "starbucks": "restaurant", "星巴克": "restaurant",
+    "maxim": "restaurant", "美心": "restaurant",
+    "tamjai": "restaurant", "譚仔": "restaurant",
+    "yoshinoya": "restaurant", "吉野家": "restaurant",
+    "fairwood": "restaurant", "大快活": "restaurant",
+    "cafe de coral": "restaurant", "大家樂": "restaurant",
+    "tsui wah": "restaurant", "翠華": "restaurant",
+    "mtr": "transportation", "港鐵": "transportation",
+    "taxi": "transportation", "的士": "transportation",
+    "kmb": "transportation", "九巴": "transportation",
+    "citybus": "transportation", "城巴": "transportation",
+    "nwfb": "transportation", "新巴": "transportation",
+    "octopus": "transportation", "八達通": "transportation",
+    "clp power": "utilities", "clp": "utilities", "中電": "utilities",
+    "hk electric": "utilities", "港燈": "utilities", "hke": "utilities",
+    "town gas": "utilities", "煤氣": "utilities",
+    "pccw": "utilities", "電訊盈科": "utilities",
+    "hkbn": "utilities", "香港寬頻": "utilities",
+    "水務署": "utilities",
+}
+
+
 def classify_receipt_type(text: str, merchant: str) -> str:
+    merchant_lower = merchant.lower()
+    for key, rtype in _MERCHANT_TYPE_MAP.items():
+        if key in merchant_lower:
+            return rtype
+
     combined = f"{merchant} {text}".lower()
 
     restaurant_keywords = [
         "餐廳", "茶餐廳", "restaurant", "cafe", "咖啡", "food",
-        "美食", "麥當勞", "mcdonald", "肯德基", "kfc", "星巴克",
-        "starbucks", "大家樂", "cafe de coral", "美心", "maxim",
-        "翠華", "tsui wah", "譚仔", "tamjai", "吉野家", "yoshinoya",
-        "大快活", "fairwood", "壽司", "sushi", "火鍋", "hotpot", "燒味",
+        "美食", "壽司", "sushi", "火鍋", "hotpot", "燒味",
         "dim sum", "點心", "麵家", "noodle",
     ]
     for kw in restaurant_keywords:
