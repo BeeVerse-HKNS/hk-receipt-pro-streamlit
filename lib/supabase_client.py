@@ -43,13 +43,12 @@ def sign_up(email: str, password: str, company_name: str) -> dict:
 
         company_resp = admin_client.table("companies").insert({
             "name": company_name,
-            "created_by": user.id,
         }).execute()
         company_id = company_resp.data[0]["id"]
 
         admin_client.table("profiles").insert({
             "id": user.id,
-            "email": email,
+            "name": company_name + " Admin",
             "role": "admin",
             "company_id": company_id,
         }).execute()
@@ -229,7 +228,7 @@ def get_company_stats(company_id: str) -> dict:
 def list_employees(company_id: str) -> list:
     try:
         client = get_client()
-        resp = client.table("profiles").select("id, email, role, active").eq("company_id", company_id).execute()
+        resp = client.table("profiles").select("id, role, active").eq("company_id", company_id).execute()
         return resp.data if resp.data else []
     except Exception as e:
         st.error(f"List employees error: {e}")
@@ -247,7 +246,7 @@ def invite_employee(email: str, role: str, company_id: str) -> dict:
         user = auth_resp.user
         admin_client.table("profiles").insert({
             "id": user.id,
-            "email": email,
+            "name": email.split("@")[0],
             "role": role,
             "company_id": company_id,
             "active": True,
