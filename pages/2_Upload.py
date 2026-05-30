@@ -75,12 +75,6 @@ if "ocr_result" in st.session_state:
                 value=float(ocr_result.get("total", 0.0)),
                 step=0.1,
             )
-            tax_amount = st.number_input(
-                "稅款 Tax (HKD)",
-                min_value=0.0,
-                value=float(ocr_result.get("tax", 0.0)),
-                step=0.1,
-            )
             notes = st.text_area("備註 Notes", value="")
 
         submitted = st.form_submit_button("💾 儲存收據 Save Receipt", type="primary", use_container_width=True)
@@ -99,7 +93,7 @@ if "ocr_result" in st.session_state:
                     "merchant_name": merchant,
                     "receipt_date": str(receipt_date),
                     "total_amount": total_amount,
-                    "tax_amount": tax_amount,
+                    "tax_amount": 0.0,
                     "receipt_type": receipt_type,
                     "notes": notes,
                     "image_url": image_url,

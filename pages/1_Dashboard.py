@@ -46,7 +46,6 @@ if recent:
                 st.write(f"**類型 Type:** {r.get('receipt_type', 'N/A')}")
                 st.write(f"**狀態 Status:** {r.get('status', 'N/A')}")
             with col_b:
-                st.write(f"**稅款 Tax:** HK${r.get('tax_amount', 0):,.2f}")
                 st.write(f"**備註 Notes:** {r.get('notes', '')}")
 else:
     st.info("暫無收據 No receipts yet")

@@ -43,8 +43,6 @@ def _build_receipt_rows(receipts: list) -> list:
     rows = []
     for idx, r in enumerate(receipts, start=1):
         total = float(r.get("total_amount", 0) or 0)
-        tax = float(r.get("tax_amount", 0) or 0)
-        net = total - tax
         rows.append({
             "No.": idx,
             "Receipt Date 日期": r.get("receipt_date", ""),
@@ -53,8 +51,6 @@ def _build_receipt_rows(receipts: list) -> list:
             "Receipt Type 收據類型": _format_type(r.get("receipt_type", "other")),
             "Expense Category 費用類別": _map_category(r.get("receipt_type", "other")),
             "Total Amount HKD 總額": total,
-            "Tax Amount HKD 稅款": tax,
-            "Net Amount HKD 淨額": net,
             "Payment Method 付款方式": r.get("payment_method", "N/A") or "N/A",
             "Status 狀態": r.get("status", ""),
             "Approver 審批人": r.get("approved_by", ""),
@@ -89,8 +85,6 @@ def generate_excel_report(receipts: list) -> bytes:
 
         hkd_cols = [
             "Total Amount HKD 總額",
-            "Tax Amount HKD 稅款",
-            "Net Amount HKD 淨額",
         ]
         for col in hkd_cols:
             if col in df_receipts.columns:
@@ -103,8 +97,6 @@ def generate_excel_report(receipts: list) -> bytes:
             _style_sheet(ws, df_receipts)
 
             total_amt = sum(float(r.get("total_amount", 0) or 0) for r in receipts)
-            total_tax = sum(float(r.get("tax_amount", 0) or 0) for r in receipts)
-            total_net = total_amt - total_tax
 
             dates = [r.get("receipt_date", "") for r in receipts if r.get("receipt_date")]
             period = ""
@@ -115,15 +107,11 @@ def generate_excel_report(receipts: list) -> bytes:
                 "Metric": [
                     "Total Receipts 收據總數",
                     "Total Amount HKD 總額",
-                    "Total Tax HKD 稅款總額",
-                    "Total Net Amount HKD 淨額總數",
                     "Period 期間",
                 ],
                 "Value": [
                     str(len(receipts)),
                     _fmt_hkd(total_amt),
-                    _fmt_hkd(total_tax),
-                    _fmt_hkd(total_net),
                     period,
                 ],
             }

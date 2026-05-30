@@ -189,7 +189,7 @@ def get_receipt_image_url(storage_path: str) -> str:
 def get_company_stats(company_id: str) -> dict:
     try:
         client = get_client()
-        receipts_resp = client.table("receipts").select("total_amount, tax_amount, receipt_type, receipt_date, status, created_at").eq("company_id", company_id).execute()
+        receipts_resp = client.table("receipts").select("total_amount, receipt_type, receipt_date, status, created_at").eq("company_id", company_id).execute()
         receipts = receipts_resp.data if receipts_resp.data else []
 
         total_receipts = len(receipts)

@@ -196,7 +196,6 @@ def _parse_ocr_result(text: str, result: dict) -> dict:
             break
 
     tax_patterns = [
-        r"(?:TAX|Tax|稅|稅款|GST)[\s:]*\$?\s*([\d,]+\.?\d*)",
     ]
     for pattern in tax_patterns:
         match = re.search(pattern, text)

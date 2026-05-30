@@ -53,7 +53,7 @@ receipts = get_receipts(company_id, filters if filters else None)
 
 if receipts:
     df = pd.DataFrame(receipts)
-    display_cols = ["merchant_name", "receipt_date", "total_amount", "tax_amount", "receipt_type", "status"]
+    display_cols = ["merchant_name", "receipt_date", "total_amount", "receipt_type", "status"]
     available_cols = [c for c in display_cols if c in df.columns]
     st.dataframe(
         df[available_cols],
@@ -63,7 +63,6 @@ if receipts:
             "merchant_name": st.column_config.TextColumn("Merchant"),
             "receipt_date": st.column_config.DateColumn("Date"),
             "total_amount": st.column_config.NumberColumn("Total (HKD)", format="%.2f"),
-            "tax_amount": st.column_config.NumberColumn("Tax (HKD)", format="%.2f"),
             "receipt_type": st.column_config.TextColumn("Type"),
             "status": st.column_config.TextColumn("Status"),
         },
@@ -94,7 +93,6 @@ if receipts:
                         )
                     with e_col2:
                         e_total = st.number_input("Total (HKD)", value=float(r.get("total_amount", 0)), min_value=0.0, step=0.1, key=f"{edit_key}_total")
-                        e_tax = st.number_input("Tax (HKD)", value=float(r.get("tax_amount", 0)), min_value=0.0, step=0.1, key=f"{edit_key}_tax")
                         e_notes = st.text_area("Notes", value=r.get("notes", ""), key=f"{edit_key}_notes")
 
                     save_col, submit_col = st.columns(2)
@@ -108,7 +106,7 @@ if receipts:
                             "merchant_name": e_merchant,
                             "receipt_date": str(e_date),
                             "total_amount": e_total,
-                            "tax_amount": e_tax,
+                            "tax_amount": 0.0,
                             "receipt_type": e_type,
                             "notes": e_notes,
                         }
@@ -124,7 +122,7 @@ if receipts:
                             "merchant_name": e_merchant,
                             "receipt_date": str(e_date),
                             "total_amount": e_total,
-                            "tax_amount": e_tax,
+                            "tax_amount": 0.0,
                             "receipt_type": e_type,
                             "notes": e_notes,
                             "status": "submitted",
