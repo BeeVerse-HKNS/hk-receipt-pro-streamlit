@@ -54,7 +54,6 @@ def init_session_state():
         "email": None,
         "role": None,
         "company_id": None,
-        "supabase_client": None,
     }
     for key, val in defaults.items():
         if key not in st.session_state:

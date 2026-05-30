@@ -4,18 +4,26 @@ import uuid
 from datetime import datetime
 
 
-def get_client() -> Client:
+@st.cache_resource
+def _init_client() -> Client:
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_ANON_KEY"]
-    if not st.session_state.get("supabase_client"):
-        st.session_state.supabase_client = create_client(url, key)
-    return st.session_state.supabase_client
+    return create_client(url, key)
 
 
-def get_admin_client() -> Client:
+def get_client() -> Client:
+    return _init_client()
+
+
+@st.cache_resource
+def _init_admin_client() -> Client:
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_SERVICE_KEY"]
     return create_client(url, key)
+
+
+def get_admin_client() -> Client:
+    return _init_admin_client()
 
 
 def sign_in(email: str, password: str) -> dict:
@@ -75,7 +83,7 @@ def sign_out():
         client.auth.sign_out()
     except Exception:
         pass
-    keys_to_clear = ["logged_in", "user_id", "email", "role", "company_id", "supabase_client", "ocr_result", "report_df", "report_receipts"]
+    keys_to_clear = ["logged_in", "user_id", "email", "role", "company_id", "ocr_result", "report_df", "report_receipts"]
     for key in keys_to_clear:
         st.session_state.pop(key, None)
 
