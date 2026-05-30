@@ -247,7 +247,7 @@ def get_company_stats(company_id: str) -> dict:
 def list_employees(company_id: str) -> list:
     try:
         client = get_client()
-        resp = client.table("profiles").select("id, role, active").eq("company_id", company_id).execute()
+        resp = client.table("profiles").select("id, name, role, department").eq("company_id", company_id).execute()
         return resp.data if resp.data else []
     except Exception as e:
         st.error(f"List employees error: {e}")
@@ -268,7 +268,6 @@ def invite_employee(email: str, role: str, company_id: str) -> dict:
             "name": email.split("@")[0],
             "role": role,
             "company_id": company_id,
-            "active": True,
         }).execute()
         return {"user": user}
     except Exception as e:

@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from lib.supabase_client import get_receipts, get_current_user
-from lib.excel_export import generate_excel_report
+from lib.excel_export import generate_excel_report, generate_csv_report
 
 if not st.session_state.get("logged_in"):
     st.warning("請先登入 Please login first")
@@ -79,5 +79,16 @@ if "report_df" in st.session_state:
             data=excel_data,
             file_name=filename,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+
+    csv_data = generate_csv_report(st.session_state.report_receipts)
+    if csv_data:
+        csv_filename = f"receipt_report_{date.today().isoformat()}.csv"
+        st.download_button(
+            label="📄 下載 CSV Download CSV",
+            data=csv_data,
+            file_name=csv_filename,
+            mime="text/csv",
             use_container_width=True,
         )

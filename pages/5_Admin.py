@@ -31,11 +31,11 @@ with tab_employees:
         for emp in employees:
             col1, col2, col3 = st.columns([3, 2, 1])
             with col1:
-                st.write(f"**{emp.get('email', 'N/A')}**")
+                st.write(f"**{emp.get('name', 'N/A')}**")
             with col2:
                 st.write(f"角色: {emp.get('role', 'N/A')}")
             with col3:
-                st.write(f"狀態: {'✅' if emp.get('active', True) else '❌'}")
+                st.write(f"狀態: {'✅' if True else '❌'}")
     else:
         st.info("暫無員工 No employees found")
 
@@ -63,7 +63,7 @@ with tab_approvals:
 
     if pending:
         for r in pending:
-            receipt_label = f"{r.get('merchant_name', 'Unknown')} — HK${r.get('total_amount', 0):,.2f} by {r.get('submitted_by_email', 'Unknown')}"
+            receipt_label = f"{r.get('merchant_name', 'Unknown')} — HK${r.get('total_amount', 0):,.2f} by {r.get('submitted_by_name', 'Unknown')}"
             with st.expander(receipt_label):
                 col_info, col_actions = st.columns([2, 1])
 
@@ -72,7 +72,7 @@ with tab_approvals:
                     st.write(f"**類型 Type:** {r.get('receipt_type', 'N/A')}")
                     st.write(f"**稅款 Tax:** HK${r.get('tax_amount', 0):,.2f}")
                     st.write(f"**備註 Notes:** {r.get('notes', '')}")
-                    st.write(f"**提交人 Submitted by:** {r.get('submitted_by_email', 'N/A')}")
+                    st.write(f"**提交人 Submitted by:** {r.get('submitted_by_name', 'N/A')}")
 
                 with col_actions:
                     if st.button("✅ 批准 Approve", key=f"approve_{r.get('id', '')}", type="primary"):
