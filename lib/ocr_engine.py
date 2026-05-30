@@ -69,9 +69,10 @@ def extract_text_from_file(file_bytes: bytes, filename: str) -> str:
                     text += para.text + "\n"
             for table in doc.tables:
                 for row in table.rows:
-                    for cell in row.cells:
-                        if cell.text:
-                            text += cell.text + "\n"
+                    cells = [cell.text.strip() for cell in row.cells]
+                    row_text = " | ".join(cells)
+                    if row_text.strip("| "):
+                        text += row_text + "\n"
         except ImportError:
             pass
         except Exception:
@@ -91,12 +92,34 @@ def extract_receipt_data(file_bytes: bytes, filename: str = None) -> dict:
     }
 
     try:
+        from lib.receipt_parser import extract_total, extract_date, extract_tax, classify_receipt_type, extract_merchant
+        _use_receipt_parser = True
+    except ImportError:
+        _use_receipt_parser = False
+
+    try:
         if filename and not is_image_file(filename):
             ocr_text = extract_text_from_file(file_bytes, filename)
-            result = _parse_ocr_result(ocr_text, result)
         else:
             image = Image.open(io.BytesIO(file_bytes))
             ocr_text = _run_ocr(image)
+
+        if _use_receipt_parser:
+            lines = ocr_text.strip().split("\n")
+            result["merchant"] = extract_merchant(lines)
+            date_str = extract_date(ocr_text)
+            if date_str:
+                try:
+                    from datetime import datetime as dt
+                    result["date"] = dt.strptime(date_str, "%Y-%m-%d").date()
+                except ValueError:
+                    result["date"] = None
+            else:
+                result["date"] = None
+            result["total"] = extract_total(ocr_text) or 0.0
+            result["tax"] = extract_tax(ocr_text) or 0.0
+            result["type"] = classify_receipt_type(ocr_text, result.get("merchant", ""))
+        else:
             result = _parse_ocr_result(ocr_text, result)
     except Exception:
         pass

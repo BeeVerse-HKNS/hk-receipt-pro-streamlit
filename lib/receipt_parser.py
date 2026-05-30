@@ -129,6 +129,8 @@ def extract_total(text: str) -> Optional[float]:
     labeled_patterns = [
         r'(?:總計|總金額|合計|總數|Grand\s*Total|Amount\s*Due|Amount\s*Payable)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
         r'(?:Total|TOTAL|Amount|AMOUNT)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?:Balance\s*Due|Amount\s*Due|Total\s*Due|Net\s*Amount|Payable)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        r'(?:Invoice\s*Total|Subtotal|小計)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
         r'(?:港幣)\s*([\d,]+\.?\d*)',
     ]
 
@@ -157,6 +159,14 @@ def extract_total(text: str) -> Optional[float]:
     dollar_matches = re.findall(r'\$\s*([\d,]+\.?\d*)', text)
     if dollar_matches:
         for match in reversed(dollar_matches):
+            try:
+                return float(match.replace(',', ''))
+            except ValueError:
+                continue
+
+    decimal_matches = re.findall(r'([\d,]+\.\d{2})', text)
+    if decimal_matches:
+        for match in reversed(decimal_matches):
             try:
                 return float(match.replace(',', ''))
             except ValueError:
