@@ -1,6 +1,12 @@
 import io
 from PIL import Image
 
+try:
+    from paddleocr import PaddleOCR
+    _PADDLEOCR_AVAILABLE = True
+except ImportError:
+    _PADDLEOCR_AVAILABLE = False
+
 
 def extract_receipt_data(image_bytes: bytes) -> dict:
     result = {
@@ -24,19 +30,17 @@ def extract_receipt_data(image_bytes: bytes) -> dict:
 def _run_ocr(image: Image.Image) -> str:
     text = ""
 
-    try:
-        from paddleocr import PaddleOCR
-        ocr = PaddleOCR(use_angle_cls=True, lang="ch")
-        img_array = __import__("numpy").array(image)
-        ocr_result = ocr.ocr(img_array, cls=True)
-        for line in ocr_result:
-            if line:
-                for word_info in line:
-                    text += word_info[1][0] + "\n"
-    except ImportError:
-        pass
-    except Exception:
-        pass
+    if _PADDLEOCR_AVAILABLE:
+        try:
+            ocr = PaddleOCR(use_angle_cls=True, lang="ch")
+            img_array = __import__("numpy").array(image)
+            ocr_result = ocr.ocr(img_array, cls=True)
+            for line in ocr_result:
+                if line:
+                    for word_info in line:
+                        text += word_info[1][0] + "\n"
+        except Exception:
+            text = ""
 
     if not text.strip():
         try:

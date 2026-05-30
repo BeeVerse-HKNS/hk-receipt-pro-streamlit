@@ -2,6 +2,12 @@ import re
 from datetime import datetime
 from typing import Optional
 
+try:
+    from paddleocr import PaddleOCR
+    _PADDLEOCR_AVAILABLE = True
+except ImportError:
+    _PADDLEOCR_AVAILABLE = False
+
 
 def parse_receipt(ocr_result: dict) -> dict:
     text = ocr_result.get("text", "")
@@ -224,6 +230,9 @@ def calculate_confidence(
         confidence += 0.2
 
     if engine == "pytesseract":
+        confidence -= 0.1
+
+    if not _PADDLEOCR_AVAILABLE and engine != "pytesseract":
         confidence -= 0.1
 
     return round(min(confidence, 1.0), 2)
