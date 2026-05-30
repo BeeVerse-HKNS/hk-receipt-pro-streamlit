@@ -7,8 +7,81 @@ try:
 except ImportError:
     _PADDLEOCR_AVAILABLE = False
 
+_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "heic", "bmp", "tiff", "tif", "webp"}
+_SUPPORTED_EXTENSIONS = _IMAGE_EXTENSIONS | {"pdf", "docx", "doc", "xls", "xlsx", "csv", "txt"}
 
-def extract_receipt_data(image_bytes: bytes) -> dict:
+
+def is_image_file(filename: str) -> bool:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    return ext in _IMAGE_EXTENSIONS
+
+
+def is_supported_file(filename: str) -> bool:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    return ext in _SUPPORTED_EXTENSIONS
+
+
+def extract_text_from_file(file_bytes: bytes, filename: str) -> str:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+    if ext in _IMAGE_EXTENSIONS:
+        image = Image.open(io.BytesIO(file_bytes))
+        return _run_ocr(image)
+
+    if ext == "pdf":
+        text = ""
+        try:
+            import PyPDF2
+            reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        if text.strip():
+            return text
+
+        try:
+            from pdf2image import convert_from_bytes
+            images = convert_from_bytes(file_bytes)
+            for img in images:
+                page_text = _run_ocr(img)
+                if page_text:
+                    text += page_text + "\n"
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        return text
+
+    if ext in ("docx", "doc"):
+        text = ""
+        try:
+            import docx
+            doc = docx.Document(io.BytesIO(file_bytes))
+            for para in doc.paragraphs:
+                if para.text:
+                    text += para.text + "\n"
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text:
+                            text += cell.text + "\n"
+        except ImportError:
+            pass
+        except Exception:
+            pass
+        return text
+
+    return ""
+
+
+def extract_receipt_data(file_bytes: bytes, filename: str = None) -> dict:
     result = {
         "merchant": "",
         "date": None,
@@ -18,9 +91,13 @@ def extract_receipt_data(image_bytes: bytes) -> dict:
     }
 
     try:
-        image = Image.open(io.BytesIO(image_bytes))
-        ocr_text = _run_ocr(image)
-        result = _parse_ocr_result(ocr_text, result)
+        if filename and not is_image_file(filename):
+            ocr_text = extract_text_from_file(file_bytes, filename)
+            result = _parse_ocr_result(ocr_text, result)
+        else:
+            image = Image.open(io.BytesIO(file_bytes))
+            ocr_text = _run_ocr(image)
+            result = _parse_ocr_result(ocr_text, result)
     except Exception:
         pass
 

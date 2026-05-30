@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date
 from lib.supabase_client import create_receipt, upload_receipt_image, get_current_user
-from lib.ocr_engine import extract_receipt_data
+from lib.ocr_engine import extract_receipt_data, is_image_file
 
 if not st.session_state.get("logged_in"):
     st.warning("請先登入 Please login first")
@@ -12,15 +12,15 @@ company_id = st.session_state.company_id
 
 st.title("📷 Upload Receipt")
 
-tab_upload, tab_camera = st.tabs(["上傳圖片 Upload Image", "拍照 Camera"])
+tab_upload, tab_camera = st.tabs(["上傳檔案 Upload File", "拍照 Camera"])
 
 image_bytes = None
 filename = None
 
 with tab_upload:
     uploaded_file = st.file_uploader(
-        "選擇收據圖片 Choose receipt image",
-        type=["jpg", "jpeg", "png", "heic"],
+        "選擇收據檔案 Choose receipt file",
+        type=["jpg", "jpeg", "png", "heic", "bmp", "tiff", "tif", "webp", "pdf", "docx", "doc", "xls", "xlsx", "csv", "txt"],
         key="file_uploader",
     )
     if uploaded_file:
@@ -34,11 +34,16 @@ with tab_camera:
         filename = f"camera_{date.today().isoformat()}.jpg"
 
 if image_bytes:
-    st.image(image_bytes, caption="收據預覽 Receipt Preview", use_container_width=True)
+    if is_image_file(filename or ""):
+        st.image(image_bytes, caption="收據預覽 Receipt Preview", use_container_width=True)
+    elif (filename or "").lower().endswith(".pdf"):
+        st.info(f"📄 PDF 檔案已上傳 PDF file uploaded — {filename}")
+    else:
+        st.info(f"📎 檔案已上傳 File uploaded — {filename}")
 
     if st.button("🔍 OCR 辨識 Process OCR", type="primary", use_container_width=True):
         with st.spinner("辨識中 Processing..."):
-            ocr_result = extract_receipt_data(image_bytes)
+            ocr_result = extract_receipt_data(image_bytes, filename)
 
         st.session_state.ocr_result = ocr_result
         st.success("辨識完成 OCR complete!")
