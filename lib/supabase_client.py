@@ -19,16 +19,27 @@ def get_admin_client() -> Client:
 
 
 def sign_in(email: str, password: str) -> dict:
+    client = get_client()
     try:
-        client = get_client()
         response = client.auth.sign_in_with_password({"email": email, "password": password})
-        user = response.user
+    except Exception as e:
+        st.error("Auth failed: %s" % str(e)[:200])
+        return None
+
+    user = response.user
+    profile = {}
+    try:
         profile_resp = client.table("profiles").select("*").eq("id", user.id).single().execute()
         profile = profile_resp.data if profile_resp.data else {}
-        return {"user": user, "profile": profile}
-    except Exception as e:
-        st.error(f"Login error: {e}")
-        return None
+    except Exception:
+        try:
+            admin_client = get_admin_client()
+            profile_resp = admin_client.table("profiles").select("*").eq("id", user.id).single().execute()
+            profile = profile_resp.data if profile_resp.data else {}
+        except Exception:
+            profile = {"role": "employee", "company_id": None}
+
+    return {"user": user, "profile": profile}
 
 
 def sign_up(email: str, password: str, company_name: str) -> dict:
@@ -289,14 +300,14 @@ def reject_receipt(receipt_id: str, approver_id: str, reason: str) -> dict:
 def get_pending_approvals(company_id: str) -> list:
     try:
         client = get_client()
-        resp = client.table("receipts").select("*, profiles(email)").eq("company_id", company_id).eq("status", "submitted").execute()
+        resp = client.table("receipts").select("*, profiles(name, role)").eq("company_id", company_id).eq("status", "submitted").execute()
         receipts = resp.data if resp.data else []
         for r in receipts:
             profile = r.pop("profiles", {})
-            r["submitted_by_email"] = profile.get("email", "Unknown") if profile else "Unknown"
+            r["submitted_by_name"] = profile.get("name", "Unknown") if profile else "Unknown"
         return receipts
     except Exception as e:
-        st.error(f"Get pending approvals error: {e}")
+        st.error("Get pending approvals error: %s" % str(e)[:200])
         return []
 
 
@@ -319,10 +330,9 @@ def request_account_deletion(user_id: str) -> bool:
     try:
         admin_client = get_admin_client()
         admin_client.table("profiles").update({
-            "deletion_requested": True,
-            "deletion_requested_at": datetime.utcnow().isoformat(),
+            "name": "[DELETION REQUESTED]",
         }).eq("id", user_id).execute()
         return True
     except Exception as e:
-        st.error(f"Request deletion error: {e}")
+        st.error("Request deletion error: %s" % str(e)[:200])
         return False

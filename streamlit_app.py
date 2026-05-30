@@ -84,9 +84,11 @@ def show_login_page():
                     st.session_state.email = user.email
                     st.session_state.role = result.get("profile", {}).get("role", "employee")
                     st.session_state.company_id = result.get("profile", {}).get("company_id")
+                    if not st.session_state.company_id:
+                        st.warning("No company linked — please contact admin")
                     st.rerun()
                 else:
-                    st.error("登入失敗 Login failed — please check your credentials")
+                    st.error("登入失敗 Login failed — check email/password or see error above")
 
     with tab_register:
         with st.form("register_form"):
