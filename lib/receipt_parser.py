@@ -56,6 +56,8 @@ def extract_merchant(lines: list[str]) -> str:
         "Tsui Wah", "翠華",
         "UNIQLO",
         "H&M",
+        "3HK", "3香港",
+        "% Arabica",
     ]
 
     top_lines = lines[:5] if len(lines) >= 5 else lines
@@ -126,14 +128,16 @@ def extract_total(text: str) -> Optional[float]:
     if not text:
         return None
 
+    _CUR = r'(?:H\.K\.\$|H\.K\.D\.|HKD|HK\$|hkd|港幣)?\s*\$?'
+
     labeled_patterns = [
-        r'(?:Balance\s*Due|Amount\s*Due|Total\s*Due|Net\s*Amount|Payable|應付)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
-        r'(?:Grand\s*Total|總計|總金額|合計|總數)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
-        r'(?:Invoice\s*Total|Amount\s*Payable)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
-        r'(?<!Sub)(?<!sub)(?:Total|TOTAL)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
-        r'(?:Amount|AMOUNT)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        rf'(?:Balance\s*Due|Amount\s*Due|Total\s*Due|Net\s*Amount|Payable|應付)[:\s]*{_CUR}\s*([\d,]+\.?\d*)',
+        rf'(?:Grand\s*Total|總計|總金額|合計|總數)[:\s]*{_CUR}\s*([\d,]+\.?\d*)',
+        rf'(?:Invoice\s*Total|Amount\s*Payable)[:\s]*{_CUR}\s*([\d,]+\.?\d*)',
+        rf'(?<!Sub)(?<!sub)(?:Total|TOTAL)[:\s]*{_CUR}\s*([\d,]+\.?\d*)',
+        rf'(?:Amount|AMOUNT)[:\s]*{_CUR}\s*([\d,]+\.?\d*)',
         r'(?:港幣)\s*([\d,]+\.?\d*)',
-        r'(?:Subtotal|Sub\s*Total|小計)[:\s]*\$?\s*(?:HKD|HK\$|hkd)?\s*([\d,]+\.?\d*)',
+        rf'(?:Subtotal|Sub\s*Total|小計)[:\s]*{_CUR}\s*([\d,]+\.?\d*)',
     ]
 
     for pattern in labeled_patterns:
@@ -174,6 +178,15 @@ def extract_total(text: str) -> Optional[float]:
             except ValueError:
                 continue
 
+    standalone_amount = re.search(r'^\s*([\d,]+\.?\d*)\s*$', text, re.MULTILINE)
+    if standalone_amount:
+        try:
+            val = float(standalone_amount.group(1).replace(',', ''))
+            if val > 0:
+                return val
+        except ValueError:
+            pass
+
     return None
 
 
@@ -207,6 +220,19 @@ _MERCHANT_TYPE_MAP = {
     "ikea": "retail", "宜家": "retail",
     "uniqlo": "retail",
     "h&m": "retail",
+    "muji": "retail", "無印良品": "retail",
+    "daiso": "retail", "大創": "retail",
+    "japan home": "retail", "日本城": "retail", "jhc": "retail",
+    "fortress": "retail", "豐澤": "retail",
+    "broadway": "retail", "百老匯": "retail",
+    "pricerite": "retail", "實惠": "retail",
+    "city super": "retail", "city'super": "retail",
+    "log-on": "retail", "logon": "retail",
+    "apita": "retail",
+    "yata": "retail", "一田": "retail",
+    "sogo": "retail", "崇光": "retail",
+    "zara": "retail",
+    "sa sa": "retail", "莎莎": "retail",
     "mcdonald": "restaurant", "麥當勞": "restaurant",
     "kfc": "restaurant", "肯德基": "restaurant",
     "starbucks": "restaurant", "星巴克": "restaurant",
@@ -216,18 +242,60 @@ _MERCHANT_TYPE_MAP = {
     "fairwood": "restaurant", "大快活": "restaurant",
     "cafe de coral": "restaurant", "大家樂": "restaurant",
     "tsui wah": "restaurant", "翠華": "restaurant",
+    "pacific coffee": "restaurant", "太平洋咖啡": "restaurant",
+    "subway": "restaurant", "賽百味": "restaurant",
+    "pizza hut": "restaurant", "必勝客": "restaurant",
+    "domino": "restaurant", "達美樂": "restaurant",
+    "hai di lao": "restaurant", "海底撈": "restaurant",
+    "din tai fung": "restaurant", "鼎泰豐": "restaurant",
+    "ichiran": "restaurant", "一蘭": "restaurant",
+    "pret": "restaurant",
+    "shake shack": "restaurant",
+    "lady m": "restaurant",
+    "arabica": "restaurant", "%arabica": "restaurant",
+    "emerald": "restaurant", "翠園": "restaurant",
+    "lei garden": "restaurant", "利苑": "restaurant",
+    "fook lam moon": "restaurant", "福臨門": "restaurant",
     "mtr": "transportation", "港鐵": "transportation",
     "taxi": "transportation", "的士": "transportation",
     "kmb": "transportation", "九巴": "transportation",
     "citybus": "transportation", "城巴": "transportation",
     "nwfb": "transportation", "新巴": "transportation",
     "octopus": "transportation", "八達通": "transportation",
+    "tram": "transportation", "電車": "transportation",
+    "star ferry": "transportation", "天星小輪": "transportation", "天星": "transportation",
+    "first ferry": "transportation", "新渡輪": "transportation", "nwff": "transportation",
+    "uber": "transportation",
+    "cross harbour": "transportation", "海底隧道": "transportation",
+    "eastern harbour": "transportation", "東區海底": "transportation",
+    "airport express": "transportation", "機場快綫": "transportation", "機場快線": "transportation",
     "clp power": "utilities", "clp": "utilities", "中電": "utilities",
     "hk electric": "utilities", "港燈": "utilities", "hke": "utilities",
     "town gas": "utilities", "煤氣": "utilities",
     "pccw": "utilities", "電訊盈科": "utilities",
     "hkbn": "utilities", "香港寬頻": "utilities",
     "水務署": "utilities",
+    "smartone": "utilities", "數碼通": "utilities",
+    "3hk": "utilities", "3香港": "utilities",
+    "china mobile": "utilities", "中國移動": "utilities", "cmhk": "utilities",
+    "now tv": "utilities", "now寬頻": "utilities",
+    "hsbc": "other", "匯豐": "other",
+    "hang seng": "other", "恆生": "other",
+    "boc": "other", "中銀": "other",
+    "standard chartered": "other", "渣打": "other",
+    "post office": "other", "郵局": "other",
+    "government": "other", "政府": "other",
+    "hospital": "other", "醫院": "other",
+    "abc store": "other",
+    "xyz shop": "other",
+    "random shop": "other",
+    "hello mart": "other",
+    "good buy": "other",
+    "quick shop": "other",
+    "easy store": "other",
+    "happy mall": "other",
+    "sunrise ltd": "other",
+    "測試店鋪": "other",
 }
 
 
@@ -240,9 +308,12 @@ def classify_receipt_type(text: str, merchant: str) -> str:
     combined = f"{merchant} {text}".lower()
 
     restaurant_keywords = [
-        "餐廳", "茶餐廳", "restaurant", "cafe", "咖啡", "food",
-        "美食", "壽司", "sushi", "火鍋", "hotpot", "燒味",
+        "餐廳", "茶餐廳", "restaurant", "cafe", "咖啡", "coffee",
+        "food", "美食", "壽司", "sushi", "火鍋", "hotpot", "燒味",
         "dim sum", "點心", "麵家", "noodle",
+        "bakery", "麵包", "蛋糕", "cake", "tea house",
+        "麵", "快餐", "fast food", "bistro", "酒吧", "pub restaurant",
+        "酒家", "酒樓",
     ]
     for kw in restaurant_keywords:
         if kw in combined:
@@ -252,6 +323,8 @@ def classify_receipt_type(text: str, merchant: str) -> str:
         "的士", "taxi", "mtr", "港鐵", "巴士", "bus",
         "八達通", "octopus", "九巴", "kmb", "城巴", "citybus",
         "新巴", "nwfb", "輕鐵", "light rail", "纜車", "tram",
+        "車費", "票價", "車票", "月票",
+        "渡輪", "ferry", "cable car", "taxi fare",
     ]
     for kw in transport_keywords:
         if kw in combined:
@@ -261,6 +334,8 @@ def classify_receipt_type(text: str, merchant: str) -> str:
         "電費", "水費", "煤氣", "electricity", "water", "gas",
         "中電", "clp power", "港燈", "hk electric", "水務署",
         "clp", "hke", "town gas", "pccw", "電訊盈科", "hkbn", "香港寬頻",
+        "煤氣費", "寬頻", "broadband", "流動電話", "mobile",
+        "月費", "monthly fee", "賬單", "錶",
     ]
     for kw in utility_keywords:
         if kw in combined:
@@ -270,10 +345,23 @@ def classify_receipt_type(text: str, merchant: str) -> str:
         "百佳", "parknshop", "wellcome", "惠康", "萬寧", "mannings",
         "7-eleven", "7-11", "屈臣氏", "watsons", "超市",
         "supermarket", "藥房", "pharmacy", "便利店", "convenience",
+        "藥妝", "cosmetics", "電器", "electronics",
+        "傢俬", "furniture", "家居", "home centre",
     ]
     for kw in retail_keywords:
         if kw in combined:
             return "retail"
+
+    if "invoice" in combined or "發票" in combined or "invoice" in text.lower():
+        invoice_type_hints = [
+            (["office supplies", "辦公用品", "stationery", "文具"], "retail"),
+            (["meals", "entertainment", "膳食", "餐飲", "catering"], "restaurant"),
+            (["transport", "travel", "交通", "車資", "旅費"], "transportation"),
+            (["rent", "utilities", "租金", "水電"], "utilities"),
+        ]
+        for keywords, hint_type in invoice_type_hints:
+            if any(kw in combined for kw in keywords):
+                return hint_type
 
     return "other"
 
