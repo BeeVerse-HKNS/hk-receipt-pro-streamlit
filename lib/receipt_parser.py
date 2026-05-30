@@ -19,6 +19,8 @@ def parse_receipt(ocr_result: dict) -> dict:
     total = extract_total(text)
     tax = extract_tax(text)
     receipt_type = classify_receipt_type(text, merchant)
+    description = extract_description(lines)
+    payment_method = extract_payment_method(text)
     confidence = calculate_confidence(merchant, date, total, engine)
 
     return {
@@ -28,6 +30,8 @@ def parse_receipt(ocr_result: dict) -> dict:
         "tax": tax,
         "currency": "HKD",
         "receipt_type": receipt_type,
+        "description": description,
+        "payment_method": payment_method,
         "confidence": confidence,
         "raw_text": text,
     }
@@ -210,52 +214,104 @@ def extract_tax(text: str) -> Optional[float]:
     return None
 
 
+def extract_description(lines: list[str]) -> str:
+    if not lines or len(lines) < 2:
+        return ""
+
+    _DATE_PATTERNS = [
+        r'^\d{4}[/.-]\d{1,2}[/.-]\d{1,2}$',
+        r'^\d{1,2}[/.-]\d{1,2}[/.-]\d{4}$',
+        r'^\d{4}年\d{1,2}月\d{1,2}日$',
+    ]
+    _AMOUNT_PATTERN = r'^[\$]?[\d,]+\.?\d*$'
+
+    for line in lines[1:]:
+        cleaned = line.strip()
+        if not cleaned:
+            continue
+        is_date = any(re.match(p, cleaned) for p in _DATE_PATTERNS)
+        if is_date:
+            continue
+        if re.match(_AMOUNT_PATTERN, cleaned):
+            continue
+        if len(cleaned) < 2:
+            continue
+        return cleaned
+
+    return ""
+
+
+def extract_payment_method(text: str) -> str:
+    if not text:
+        return "N/A"
+
+    payment_methods = [
+        (r'\bAmerican\s*Express\b|\bAE\b', "American Express"),
+        (r'\bVisa\b', "Visa"),
+        (r'\bMastercard\b|\bMaster\s*Card\b', "Mastercard"),
+        (r'八達通|\bOctopus\b', "Octopus"),
+        (r'現金|\bCash\b', "Cash"),
+        (r'信用卡|\bCredit\s*Card\b', "Credit Card"),
+        (r'易辦事|\bEPS\b', "EPS"),
+        (r'\bPayMe\b', "PayMe"),
+        (r'支付寶|\bAlipay\b', "Alipay"),
+        (r'微信支付|\bWeChat\s*Pay\b', "WeChat Pay"),
+        (r'轉數快|\bFPS\b', "FPS"),
+    ]
+
+    for pattern, label in payment_methods:
+        if re.search(pattern, text, re.IGNORECASE):
+            return label
+
+    return "N/A"
+
+
 _MERCHANT_TYPE_MAP = {
-    "parknshop": "retail", "百佳": "retail",
-    "wellcome": "retail", "惠康": "retail",
-    "7-eleven": "retail", "7-11": "retail", "七十一": "retail",
-    "circle k": "retail", "ok便利店": "retail",
-    "watsons": "retail", "屈臣氏": "retail",
-    "mannings": "retail", "萬寧": "retail",
-    "ikea": "retail", "宜家": "retail",
-    "uniqlo": "retail",
-    "h&m": "retail",
-    "muji": "retail", "無印良品": "retail",
-    "daiso": "retail", "大創": "retail",
-    "japan home": "retail", "日本城": "retail", "jhc": "retail",
-    "fortress": "retail", "豐澤": "retail",
-    "broadway": "retail", "百老匯": "retail",
-    "pricerite": "retail", "實惠": "retail",
-    "city super": "retail", "city'super": "retail",
-    "log-on": "retail", "logon": "retail",
-    "apita": "retail",
-    "yata": "retail", "一田": "retail",
-    "sogo": "retail", "崇光": "retail",
-    "zara": "retail",
-    "sa sa": "retail", "莎莎": "retail",
-    "mcdonald": "restaurant", "麥當勞": "restaurant",
-    "kfc": "restaurant", "肯德基": "restaurant",
-    "starbucks": "restaurant", "星巴克": "restaurant",
-    "maxim": "restaurant", "美心": "restaurant",
-    "tamjai": "restaurant", "譚仔": "restaurant",
-    "yoshinoya": "restaurant", "吉野家": "restaurant",
-    "fairwood": "restaurant", "大快活": "restaurant",
-    "cafe de coral": "restaurant", "大家樂": "restaurant",
-    "tsui wah": "restaurant", "翠華": "restaurant",
-    "pacific coffee": "restaurant", "太平洋咖啡": "restaurant",
-    "subway": "restaurant", "賽百味": "restaurant",
-    "pizza hut": "restaurant", "必勝客": "restaurant",
-    "domino": "restaurant", "達美樂": "restaurant",
-    "hai di lao": "restaurant", "海底撈": "restaurant",
-    "din tai fung": "restaurant", "鼎泰豐": "restaurant",
-    "ichiran": "restaurant", "一蘭": "restaurant",
-    "pret": "restaurant",
-    "shake shack": "restaurant",
-    "lady m": "restaurant",
-    "arabica": "restaurant", "%arabica": "restaurant",
-    "emerald": "restaurant", "翠園": "restaurant",
-    "lei garden": "restaurant", "利苑": "restaurant",
-    "fook lam moon": "restaurant", "福臨門": "restaurant",
+    "daiso": "office_supplies", "大創": "office_supplies",
+    "japan home": "office_supplies", "日本城": "office_supplies", "jhc": "office_supplies",
+    "muji": "office_supplies", "無印良品": "office_supplies",
+    "fortress": "office_supplies", "豐澤": "office_supplies",
+    "broadway": "office_supplies", "百老匯": "office_supplies",
+    "pricerite": "office_supplies", "實惠": "office_supplies",
+    "parknshop": "miscellaneous", "百佳": "miscellaneous",
+    "wellcome": "miscellaneous", "惠康": "miscellaneous",
+    "7-eleven": "miscellaneous", "7-11": "miscellaneous", "七十一": "miscellaneous",
+    "circle k": "miscellaneous", "ok便利店": "miscellaneous",
+    "watsons": "miscellaneous", "屈臣氏": "miscellaneous",
+    "mannings": "miscellaneous", "萬寧": "miscellaneous",
+    "ikea": "miscellaneous", "宜家": "miscellaneous",
+    "uniqlo": "miscellaneous",
+    "h&m": "miscellaneous",
+    "zara": "miscellaneous",
+    "sa sa": "miscellaneous", "莎莎": "miscellaneous",
+    "city super": "miscellaneous", "city'super": "miscellaneous",
+    "log-on": "miscellaneous", "logon": "miscellaneous",
+    "apita": "miscellaneous",
+    "yata": "miscellaneous", "一田": "miscellaneous",
+    "sogo": "miscellaneous", "崇光": "miscellaneous",
+    "mcdonald": "meals_entertainment", "麥當勞": "meals_entertainment",
+    "kfc": "meals_entertainment", "肯德基": "meals_entertainment",
+    "starbucks": "meals_entertainment", "星巴克": "meals_entertainment",
+    "maxim": "meals_entertainment", "美心": "meals_entertainment",
+    "tamjai": "meals_entertainment", "譚仔": "meals_entertainment",
+    "yoshinoya": "meals_entertainment", "吉野家": "meals_entertainment",
+    "fairwood": "meals_entertainment", "大快活": "meals_entertainment",
+    "cafe de coral": "meals_entertainment", "大家樂": "meals_entertainment",
+    "tsui wah": "meals_entertainment", "翠華": "meals_entertainment",
+    "pacific coffee": "meals_entertainment", "太平洋咖啡": "meals_entertainment",
+    "subway": "meals_entertainment", "賽百味": "meals_entertainment",
+    "pizza hut": "meals_entertainment", "必勝客": "meals_entertainment",
+    "domino": "meals_entertainment", "達美樂": "meals_entertainment",
+    "hai di lao": "meals_entertainment", "海底撈": "meals_entertainment",
+    "din tai fung": "meals_entertainment", "鼎泰豐": "meals_entertainment",
+    "ichiran": "meals_entertainment", "一蘭": "meals_entertainment",
+    "pret": "meals_entertainment",
+    "shake shack": "meals_entertainment",
+    "lady m": "meals_entertainment",
+    "arabica": "meals_entertainment", "%arabica": "meals_entertainment",
+    "emerald": "meals_entertainment", "翠園": "meals_entertainment",
+    "lei garden": "meals_entertainment", "利苑": "meals_entertainment",
+    "fook lam moon": "meals_entertainment", "福臨門": "meals_entertainment",
     "mtr": "transportation", "港鐵": "transportation",
     "taxi": "transportation", "的士": "transportation",
     "kmb": "transportation", "九巴": "transportation",
@@ -279,23 +335,18 @@ _MERCHANT_TYPE_MAP = {
     "3hk": "utilities", "3香港": "utilities",
     "china mobile": "utilities", "中國移動": "utilities", "cmhk": "utilities",
     "now tv": "utilities", "now寬頻": "utilities",
-    "hsbc": "other", "匯豐": "other",
-    "hang seng": "other", "恆生": "other",
-    "boc": "other", "中銀": "other",
-    "standard chartered": "other", "渣打": "other",
-    "post office": "other", "郵局": "other",
-    "government": "other", "政府": "other",
-    "hospital": "other", "醫院": "other",
-    "abc store": "other",
-    "xyz shop": "other",
-    "random shop": "other",
-    "hello mart": "other",
-    "good buy": "other",
-    "quick shop": "other",
-    "easy store": "other",
-    "happy mall": "other",
-    "sunrise ltd": "other",
-    "測試店鋪": "other",
+    "hsbc": "professional_fees", "匯豐": "professional_fees",
+    "hang seng": "professional_fees", "恆生": "professional_fees",
+    "boc": "professional_fees", "中銀": "professional_fees",
+    "standard chartered": "professional_fees", "渣打": "professional_fees",
+    "post office": "professional_fees", "郵局": "professional_fees",
+    "government": "professional_fees", "政府": "professional_fees",
+    "hospital": "professional_fees", "醫院": "professional_fees",
+    "clinic": "professional_fees", "診所": "professional_fees",
+    "bupa": "insurance", "保柏": "insurance",
+    "aia": "insurance", "友邦": "insurance",
+    "manulife": "insurance", "宏利": "insurance",
+    "prudential": "insurance", "保誠": "insurance",
 }
 
 
@@ -307,7 +358,15 @@ def classify_receipt_type(text: str, merchant: str) -> str:
 
     combined = f"{merchant} {text}".lower()
 
-    restaurant_keywords = [
+    office_supplies_keywords = [
+        "辦公", "文具", "stationery", "office supplies",
+        "傢俬", "furniture", "電器", "electronics",
+    ]
+    for kw in office_supplies_keywords:
+        if kw in combined:
+            return "office_supplies"
+
+    meals_entertainment_keywords = [
         "餐廳", "茶餐廳", "restaurant", "cafe", "咖啡", "coffee",
         "food", "美食", "壽司", "sushi", "火鍋", "hotpot", "燒味",
         "dim sum", "點心", "麵家", "noodle",
@@ -315,18 +374,18 @@ def classify_receipt_type(text: str, merchant: str) -> str:
         "麵", "快餐", "fast food", "bistro", "酒吧", "pub restaurant",
         "酒家", "酒樓",
     ]
-    for kw in restaurant_keywords:
+    for kw in meals_entertainment_keywords:
         if kw in combined:
-            return "restaurant"
+            return "meals_entertainment"
 
-    transport_keywords = [
+    transportation_keywords = [
         "的士", "taxi", "mtr", "港鐵", "巴士", "bus",
         "八達通", "octopus", "九巴", "kmb", "城巴", "citybus",
         "新巴", "nwfb", "輕鐵", "light rail", "纜車", "tram",
         "車費", "票價", "車票", "月票",
         "渡輪", "ferry", "cable car", "taxi fare",
     ]
-    for kw in transport_keywords:
+    for kw in transportation_keywords:
         if kw in combined:
             return "transportation"
 
@@ -341,29 +400,78 @@ def classify_receipt_type(text: str, merchant: str) -> str:
         if kw in combined:
             return "utilities"
 
-    retail_keywords = [
-        "百佳", "parknshop", "wellcome", "惠康", "萬寧", "mannings",
-        "7-eleven", "7-11", "屈臣氏", "watsons", "超市",
-        "supermarket", "藥房", "pharmacy", "便利店", "convenience",
-        "藥妝", "cosmetics", "電器", "electronics",
-        "傢俬", "furniture", "家居", "home centre",
+    rent_rates_keywords = [
+        "租金", "差餉", "rent", "rates",
+        "物業管理", "management fee",
     ]
-    for kw in retail_keywords:
+    for kw in rent_rates_keywords:
         if kw in combined:
-            return "retail"
+            return "rent_rates"
+
+    professional_fees_keywords = [
+        "專業", "professional", "法律", "legal",
+        "會計", "accounting", "顧問", "consulting",
+        "audit", "核數",
+    ]
+    for kw in professional_fees_keywords:
+        if kw in combined:
+            return "professional_fees"
+
+    insurance_keywords = [
+        "保險", "insurance", "premium", "保費",
+    ]
+    for kw in insurance_keywords:
+        if kw in combined:
+            return "insurance"
+
+    repairs_maintenance_keywords = [
+        "維修", "repair", "保養", "maintenance",
+        "裝修", "renovation",
+    ]
+    for kw in repairs_maintenance_keywords:
+        if kw in combined:
+            return "repairs_maintenance"
+
+    travel_keywords = [
+        "機票", "air ticket", "flight", "酒店", "hotel",
+        "住宿", "accommodation", "出差",
+    ]
+    for kw in travel_keywords:
+        if kw in combined:
+            return "travel"
+
+    marketing_keywords = [
+        "廣告", "advertising", "推廣", "promotion",
+        "市場", "marketing",
+    ]
+    for kw in marketing_keywords:
+        if kw in combined:
+            return "marketing"
+
+    depreciation_keywords = [
+        "折舊", "depreciation", "攤銷", "amortization",
+    ]
+    for kw in depreciation_keywords:
+        if kw in combined:
+            return "depreciation"
 
     if "invoice" in combined or "發票" in combined or "invoice" in text.lower():
         invoice_type_hints = [
-            (["office supplies", "辦公用品", "stationery", "文具"], "retail"),
-            (["meals", "entertainment", "膳食", "餐飲", "catering"], "restaurant"),
+            (["office supplies", "辦公用品", "stationery", "文具"], "office_supplies"),
+            (["meals", "entertainment", "膳食", "餐飲", "catering"], "meals_entertainment"),
             (["transport", "travel", "交通", "車資", "旅費"], "transportation"),
             (["rent", "utilities", "租金", "水電"], "utilities"),
+            (["professional", "legal", "accounting", "專業", "法律", "會計"], "professional_fees"),
+            (["insurance", "保險"], "insurance"),
+            (["repair", "maintenance", "維修", "保養"], "repairs_maintenance"),
+            (["hotel", "flight", "酒店", "機票"], "travel"),
+            (["advertising", "marketing", "廣告", "推廣"], "marketing"),
         ]
         for keywords, hint_type in invoice_type_hints:
             if any(kw in combined for kw in keywords):
                 return hint_type
 
-    return "other"
+    return "miscellaneous"
 
 
 def calculate_confidence(

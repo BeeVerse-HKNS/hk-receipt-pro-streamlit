@@ -88,11 +88,17 @@ def extract_receipt_data(file_bytes: bytes, filename: str = None) -> dict:
         "date": None,
         "total": 0.0,
         "tax": 0.0,
-        "type": "other",
+        "type": "miscellaneous",
+        "description": "",
+        "payment_method": "N/A",
     }
 
     try:
-        from lib.receipt_parser import extract_total, extract_date, extract_tax, classify_receipt_type, extract_merchant
+        from lib.receipt_parser import (
+            extract_total, extract_date, extract_tax,
+            classify_receipt_type, extract_merchant,
+            extract_description, extract_payment_method,
+        )
         _use_receipt_parser = True
     except ImportError:
         _use_receipt_parser = False
@@ -119,6 +125,8 @@ def extract_receipt_data(file_bytes: bytes, filename: str = None) -> dict:
             result["total"] = extract_total(ocr_text) or 0.0
             result["tax"] = extract_tax(ocr_text) or 0.0
             result["type"] = classify_receipt_type(ocr_text, result.get("merchant", ""))
+            result["description"] = extract_description(lines)
+            result["payment_method"] = extract_payment_method(ocr_text)
         else:
             result = _parse_ocr_result(ocr_text, result)
     except Exception:
@@ -208,12 +216,48 @@ def _parse_ocr_result(text: str, result: dict) -> dict:
 
     text_lower = text.lower()
     if any(kw in text_lower for kw in ["restaurant", "餐廳", "茶餐", "酒樓", "快餐"]):
-        result["type"] = "restaurant"
+        result["type"] = "meals_entertainment"
     elif any(kw in text_lower for kw in ["mtr", "巴士", "的士", "taxi", "transport"]):
         result["type"] = "transportation"
     elif any(kw in text_lower for kw in ["電力", "煤氣", "水費", "electricity", "gas", "water", "中電", "港燈"]):
         result["type"] = "utilities"
     elif any(kw in text_lower for kw in ["超市", "便利店", "supermarket", "7-eleven", "wellcome", "parknshop"]):
-        result["type"] = "retail"
+        result["type"] = "miscellaneous"
+    elif any(kw in text_lower for kw in ["辦公", "文具", "stationery"]):
+        result["type"] = "office_supplies"
+    elif any(kw in text_lower for kw in ["租金", "差餉", "rent", "rates"]):
+        result["type"] = "rent_rates"
+    elif any(kw in text_lower for kw in ["專業", "professional", "法律", "legal", "會計", "accounting"]):
+        result["type"] = "professional_fees"
+    elif any(kw in text_lower for kw in ["保險", "insurance"]):
+        result["type"] = "insurance"
+    elif any(kw in text_lower for kw in ["維修", "repair", "保養", "maintenance"]):
+        result["type"] = "repairs_maintenance"
+    elif any(kw in text_lower for kw in ["機票", "flight", "酒店", "hotel"]):
+        result["type"] = "travel"
+    elif any(kw in text_lower for kw in ["廣告", "advertising", "推廣", "promotion"]):
+        result["type"] = "marketing"
+    elif any(kw in text_lower for kw in ["折舊", "depreciation"]):
+        result["type"] = "depreciation"
+
+    if len(lines) > 1:
+        for line in lines[1:]:
+            cleaned = line.strip()
+            if cleaned and len(cleaned) >= 2:
+                result["description"] = cleaned
+                break
+
+    payment_keywords = [
+        (r'\bVisa\b', "Visa"), (r'\bMastercard\b', "Mastercard"),
+        (r'八達通|\bOctopus\b', "Octopus"), (r'現金|\bCash\b', "Cash"),
+        (r'信用卡|\bCredit\s*Card\b', "Credit Card"),
+        (r'易辦事|\bEPS\b', "EPS"), (r'\bPayMe\b', "PayMe"),
+        (r'支付寶|\bAlipay\b', "Alipay"), (r'微信支付|\bWeChat\s*Pay\b', "WeChat Pay"),
+        (r'轉數快|\bFPS\b', "FPS"),
+    ]
+    for pattern, label in payment_keywords:
+        if re.search(pattern, text, re.IGNORECASE):
+            result["payment_method"] = label
+            break
 
     return result

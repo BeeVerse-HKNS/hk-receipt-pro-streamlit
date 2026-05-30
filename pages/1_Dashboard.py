@@ -2,6 +2,21 @@ import streamlit as st
 import pandas as pd
 from lib.supabase_client import get_company_stats, get_receipts, get_current_user
 
+RECEIPT_TYPE_LABELS = {
+    "office_supplies": "辦公用品 Office Supplies",
+    "meals_entertainment": "膳食及應酬 Meals & Entertainment",
+    "transportation": "交通費 Transportation",
+    "utilities": "水電費 Utilities",
+    "rent_rates": "租金及差餉 Rent & Rates",
+    "professional_fees": "專業費用 Professional Fees",
+    "insurance": "保險 Insurance",
+    "repairs_maintenance": "維修保養 Repairs & Maintenance",
+    "travel": "差旅費 Travel",
+    "marketing": "市場推廣 Marketing",
+    "depreciation": "折舊 Depreciation",
+    "miscellaneous": "雜項 Miscellaneous",
+}
+
 if not st.session_state.get("logged_in"):
     st.warning("請先登入 Please login first")
     st.stop()
@@ -39,11 +54,13 @@ st.subheader("最近收據 Recent Receipts")
 recent = get_receipts(company_id, {"limit": 5, "order_by": "created_at", "ascending": False})
 if recent:
     for r in recent:
+        r_type = r.get('receipt_type', 'miscellaneous')
+        type_label = RECEIPT_TYPE_LABELS.get(r_type, r_type)
         with st.expander(f"{r.get('merchant_name', 'Unknown')} — HK${r.get('total_amount', 0):,.2f}"):
             col_a, col_b = st.columns(2)
             with col_a:
                 st.write(f"**日期 Date:** {r.get('receipt_date', 'N/A')}")
-                st.write(f"**類型 Type:** {r.get('receipt_type', 'N/A')}")
+                st.write(f"**類型 Type:** {type_label}")
                 st.write(f"**狀態 Status:** {r.get('status', 'N/A')}")
             with col_b:
                 st.write(f"**備註 Notes:** {r.get('notes', '')}")

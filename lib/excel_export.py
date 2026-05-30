@@ -8,24 +8,38 @@ from openpyxl.utils import get_column_letter
 
 
 CATEGORY_MAP = {
-    "retail": "辦公用品 Office Supplies",
-    "restaurant": "膳食費 Meals & Entertainment",
+    "office_supplies": "辦公用品 Office Supplies",
+    "meals_entertainment": "膳食及應酬 Meals & Entertainment",
     "transportation": "交通費 Transportation",
     "utilities": "水電費 Utilities",
-    "other": "其他 Other",
+    "rent_rates": "租金及差餉 Rent & Rates",
+    "professional_fees": "專業費用 Professional Fees",
+    "insurance": "保險 Insurance",
+    "repairs_maintenance": "維修保養 Repairs & Maintenance",
+    "travel": "差旅費 Travel",
+    "marketing": "市場推廣 Marketing",
+    "depreciation": "折舊 Depreciation",
+    "miscellaneous": "雜項 Miscellaneous",
 }
 
 RECEIPT_TYPE_LABELS = {
-    "retail": "零售 Retail",
-    "restaurant": "餐飲 Restaurant",
-    "transportation": "交通 Transportation",
-    "utilities": "水電 Utilities",
-    "other": "其他 Other",
+    "office_supplies": "辦公用品 Office Supplies",
+    "meals_entertainment": "膳食及應酬 Meals & Entertainment",
+    "transportation": "交通費 Transportation",
+    "utilities": "水電費 Utilities",
+    "rent_rates": "租金及差餉 Rent & Rates",
+    "professional_fees": "專業費用 Professional Fees",
+    "insurance": "保險 Insurance",
+    "repairs_maintenance": "維修保養 Repairs & Maintenance",
+    "travel": "差旅費 Travel",
+    "marketing": "市場推廣 Marketing",
+    "depreciation": "折舊 Depreciation",
+    "miscellaneous": "雜項 Miscellaneous",
 }
 
 
 def _map_category(receipt_type: str) -> str:
-    return CATEGORY_MAP.get(receipt_type, CATEGORY_MAP["other"])
+    return CATEGORY_MAP.get(receipt_type, CATEGORY_MAP["miscellaneous"])
 
 
 def _format_type(receipt_type: str) -> str:
@@ -48,8 +62,8 @@ def _build_receipt_rows(receipts: list) -> list:
             "Receipt Date 日期": r.get("receipt_date", ""),
             "Merchant Name 商戶名稱": r.get("merchant_name", ""),
             "Description 描述": r.get("notes", ""),
-            "Receipt Type 收據類型": _format_type(r.get("receipt_type", "other")),
-            "Expense Category 費用類別": _map_category(r.get("receipt_type", "other")),
+            "Receipt Type 收據類型": _format_type(r.get("receipt_type", "miscellaneous")),
+            "Expense Category 費用類別": _map_category(r.get("receipt_type", "miscellaneous")),
             "Total Amount HKD 總額": total,
             "Payment Method 付款方式": r.get("payment_method", "N/A") or "N/A",
             "Status 狀態": r.get("status", ""),
@@ -123,7 +137,7 @@ def generate_excel_report(receipts: list) -> bytes:
             cat_totals = defaultdict(float)
             cat_counts = defaultdict(int)
             for r in receipts:
-                cat = _map_category(r.get("receipt_type", "other"))
+                cat = _map_category(r.get("receipt_type", "miscellaneous"))
                 cat_totals[cat] += float(r.get("total_amount", 0) or 0)
                 cat_counts[cat] += 1
 
@@ -146,7 +160,7 @@ def generate_excel_report(receipts: list) -> bytes:
                 month = (r.get("receipt_date", "") or "")[:7]
                 if not month:
                     month = "Unknown"
-                cat = _map_category(r.get("receipt_type", "other"))
+                cat = _map_category(r.get("receipt_type", "miscellaneous"))
                 month_cat[month][cat]["count"] += 1
                 month_cat[month][cat]["amount"] += float(r.get("total_amount", 0) or 0)
 

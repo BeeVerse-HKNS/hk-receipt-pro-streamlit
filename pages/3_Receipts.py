@@ -8,6 +8,23 @@ from lib.supabase_client import (
     get_current_user,
 )
 
+RECEIPT_TYPES = {
+    "office_supplies": "辦公用品 Office Supplies",
+    "meals_entertainment": "膳食及應酬 Meals & Entertainment",
+    "transportation": "交通費 Transportation",
+    "utilities": "水電費 Utilities",
+    "rent_rates": "租金及差餉 Rent & Rates",
+    "professional_fees": "專業費用 Professional Fees",
+    "insurance": "保險 Insurance",
+    "repairs_maintenance": "維修保養 Repairs & Maintenance",
+    "travel": "差旅費 Travel",
+    "marketing": "市場推廣 Marketing",
+    "depreciation": "折舊 Depreciation",
+    "miscellaneous": "雜項 Miscellaneous",
+}
+
+TYPE_KEYS = list(RECEIPT_TYPES.keys())
+
 if not st.session_state.get("logged_in"):
     st.warning("請先登入 Please login first")
     st.stop()
@@ -27,8 +44,9 @@ with st.expander("🔍 篩選 Filters", expanded=False):
     with col3:
         type_filter = st.selectbox(
             "類型 Type",
-            ["all", "retail", "restaurant", "transportation", "utilities", "other"],
+            ["all"] + TYPE_KEYS,
             key="filter_type",
+            format_func=lambda x: "全部 All" if x == "all" else RECEIPT_TYPES[x],
         )
     with col4:
         status_filter = st.selectbox(
@@ -83,13 +101,14 @@ if receipts:
                     with e_col1:
                         e_merchant = st.text_input("Merchant", value=r.get("merchant_name", ""), key=f"{edit_key}_merchant")
                         e_date = st.date_input("Date", value=r.get("receipt_date"), key=f"{edit_key}_date")
+                        r_type = r.get("receipt_type", "miscellaneous")
+                        e_type_index = TYPE_KEYS.index(r_type) if r_type in TYPE_KEYS else TYPE_KEYS.index("miscellaneous")
                         e_type = st.selectbox(
                             "Type",
-                            ["retail", "restaurant", "transportation", "utilities", "other"],
-                            index=["retail", "restaurant", "transportation", "utilities", "other"].index(
-                                r.get("receipt_type", "other")
-                            ) if r.get("receipt_type") in ["retail", "restaurant", "transportation", "utilities", "other"] else 4,
+                            TYPE_KEYS,
+                            index=e_type_index,
                             key=f"{edit_key}_type",
+                            format_func=lambda x: RECEIPT_TYPES[x],
                         )
                     with e_col2:
                         e_total = st.number_input("Total (HKD)", value=float(r.get("total_amount", 0)), min_value=0.0, step=0.1, key=f"{edit_key}_total")
