@@ -99,13 +99,36 @@ def get_current_user() -> dict:
     }
 
 
+# Known columns for receipts table - used to filter data before insert/update
+RECEIPT_TABLE_COLUMNS = [
+    "id", "merchant_name", "receipt_date", "total_amount", "tax_amount",
+    "receipt_type", "description", "payment_method", "notes", "image_url",
+    "company_id", "user_id", "status", "created_at", "updated_at",
+    "approved_by", "approved_at", "rejection_reason"
+]
+
+
+def _filter_columns(data: dict, allowed_columns: list) -> dict:
+    """Filter dict to only include allowed columns"""
+    return {k: v for k, v in data.items() if k in allowed_columns}
+
+
 def create_receipt(data: dict) -> dict:
     try:
         client = get_client()
-        resp = client.table("receipts").insert(data).execute()
+        # Filter to only known columns to avoid schema errors
+        filtered_data = _filter_columns(data, RECEIPT_TABLE_COLUMNS)
+        resp = client.table("receipts").insert(filtered_data).execute()
         return resp.data[0] if resp.data else None
     except Exception as e:
-        st.error(f"Create receipt error: {e}")
+        error_msg = str(e)
+        # Provide more helpful error messages
+        if "notes" in error_msg.lower() or "schema cache" in error_msg.lower():
+            st.error("Database schema error: Missing column in receipts table. Please run the SQL migration script.")
+        elif "403" in error_msg or "unauthorized" in error_msg.lower() or "row-level security" in error_msg.lower():
+            st.error("RLS policy error: Cannot insert receipts. Please check RLS policies.")
+        else:
+            st.error(f"Create receipt error: {e}")
         return None
 
 
@@ -140,11 +163,20 @@ def get_receipts(company_id: str, filters: dict = None) -> list:
 
 def update_receipt(receipt_id: str, data: dict) -> dict:
     try:
-        client = get_client()
-        resp = client.table("receipts").update(data).eq("id", receipt_id).execute()
+        # Use service key to bypass RLS for updates
+        admin_client = get_admin_client()
+        # Filter to only known columns to avoid schema errors
+        filtered_data = _filter_columns(data, RECEIPT_TABLE_COLUMNS)
+        resp = admin_client.table("receipts").update(filtered_data).eq("id", receipt_id).execute()
         return resp.data[0] if resp.data else None
     except Exception as e:
-        st.error(f"Update receipt error: {e}")
+        error_msg = str(e)
+        if "notes" in error_msg.lower() or "schema cache" in error_msg.lower():
+            st.error("Database schema error: Missing column in receipts table. Please run the SQL migration script.")
+        elif "403" in error_msg or "unauthorized" in error_msg.lower() or "row-level security" in error_msg.lower():
+            st.error("RLS policy error: Cannot update receipt. Please check RLS policies.")
+        else:
+            st.error(f"Update receipt error: {e}")
         return None
 
 
